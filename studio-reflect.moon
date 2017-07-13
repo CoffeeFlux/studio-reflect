@@ -11,6 +11,7 @@ print 'Running studio-reflect plugin!'
 wait 1 -- Standard wait for loading etc.
 
 httpService = game\GetService 'HttpService'
+runService = game\GetService 'RunService'
 serverStorage = game\GetService 'ServerStorage'
 replicatedStorage = game\GetService 'ReplicatedStorage'
 workspace = game\GetService 'Workspace'
@@ -35,15 +36,6 @@ httpActive = ->
 	success, response = pcall -> 
 		httpService\PostAsync SERVER_ADDRESS, projectNameJSON
 	return success
-
--- Attempt to establish connection with the python server
-while not httpActive!
-	wait 1
-
-print 'Connection established with server running at ' .. SERVER_ADDRESS
-
-serverModules\ClearAllChildren!
-replicatedModules\ClearAllChildren!
 
 parseResponse = (body) ->
 	for _, entry in pairs body
@@ -82,11 +74,21 @@ parseResponse = (body) ->
 		else
 			print string.format errors.invalidInstruction, instruction
 
--- Connection presumably established, start fetching instructions
-Spawn ->
-	while wait POLL_INTERVAL
-		success, response = pcall -> httpService\GetAsync SERVER_ADDRESS
-		unless success
-			print string.format errors.pollingFailed, response
-			continue
-		parseResponse httpService\JSONDecode response
+unless runService\IsRunning!
+	-- Attempt to establish connection with the python server
+	while not httpActive!
+		wait 1
+
+	print 'Connection established with server running at ' .. SERVER_ADDRESS
+
+	serverModules\ClearAllChildren!
+	replicatedModules\ClearAllChildren!
+
+	-- Connection presumably established, start fetching instructions
+	Spawn ->
+		while wait POLL_INTERVAL
+			success, response = pcall -> httpService\GetAsync SERVER_ADDRESS
+			unless success
+				print string.format errors.pollingFailed, response
+				continue
+			parseResponse httpService\JSONDecode response
