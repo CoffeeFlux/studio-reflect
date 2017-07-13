@@ -1,0 +1,14 @@
+*.lua
+
+*.obj
+*.o
+*.dirstamp
+*.m4
+*.Po
+*.dll
+*.user
+*.suo
+*.lib
+*.ncb
+*.exe
+*.bat
