@@ -51,8 +51,8 @@ def get_extension(src_path):
 
 def get_contents(src_path):
 	# Super lazy way to ensure the file really exists by the time I try to read it
-	# Someone please make this less bad, thanks
-	time.sleep(0.01)
+	# This, unfortunately, the best way to do this, see https://stackoverflow.com/a/42168480
+	time.sleep(.05)
 	if get_extension(src_path) == '.moon':
 		contents = compile(src_path)
 	else:
