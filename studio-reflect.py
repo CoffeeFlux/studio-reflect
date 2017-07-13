@@ -21,7 +21,7 @@ SERVER_ADDRESS = ('127.0.0.1', 8081)
 
 ################################################################################
 
-import time, json, http.server, os, subprocess
+import time, json, http.server, os, subprocess, glob
 from urllib.parse import urlparse, parse_qs
 from cgi import parse_header, parse_multipart
 from watchdog.observers import Observer
@@ -139,17 +139,15 @@ class HTTPServer_RequestHandler(http.server.BaseHTTPRequestHandler):
 		assert_dir(replicated_dir)
 
 		server_observer = Observer()
-		server_observer.schedule(ServerHandler, path=server_dir)
+		server_observer.schedule(ServerHandler, path=server_dir, recursive=True)
 		replicated_observer = Observer()
-		replicated_observer.schedule(ReplicatedHandler, path=replicated_dir)
+		replicated_observer.schedule(ReplicatedHandler, path=replicated_dir, recursive=True)
 
 		# Send a clean list of files
-		for filename in os.listdir(server_dir):
-			if filename.endswith('.moon'):
-				ServerHandler.created(os.path.join(server_dir, filename))
-		for filename in os.listdir(replicated_dir):
-			if filename.endswith('.moon'):
-				ReplicatedHandler.created(os.path.join(replicated_dir, filename))
+		for filename in glob.glob(server_dir + '/**/*.moon', recursive=True):
+			ServerHandler.created(os.path.join(server_dir, filename))
+		for filename in glob.glob(replicated_dir + '/**/*.moon', recursive=True):
+			ReplicatedHandler.created(os.path.join(replicated_dir, filename))
 
 		# Send empty response
 		message = ''
