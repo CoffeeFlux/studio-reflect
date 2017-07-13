@@ -16,6 +16,9 @@ MOONSCRIPT_BINARY = ''
 # Should probably be in the project config itself, but whatever
 PREFIX = "local use = require(game:GetService('ReplicatedStorage'):FindFirstChild('Modules'):FindFirstChild('ModuleLoader')).GetModule\n"
 
+# Tuple of file names (without extensions) to not prefix
+PREFIX_BLACKLIST = ('ModuleLoader')
+
 # Address and port
 SERVER_ADDRESS = ('127.0.0.1', 8081)
 
@@ -43,13 +46,32 @@ def compile(src_path):
 def get_name(src_path):
 	return os.path.splitext(os.path.basename(src_path))[0]
 
+def get_extension(src_path):
+	return os.path.splitext(os.path.basename(src_path))[1]
+
+def get_contents(src_path):
+	# Super lazy way to ensure the file really exists by the time I try to read it
+	# Someone please make this less bad, thanks
+	time.sleep(0.01)
+	if get_extension(src_path) == '.moon':
+		contents = compile(src_path)
+	else:
+		f = open(src_path)
+		contents = f.read()
+		f.close()
+
+	if not (get_name(src_path) in PREFIX_BLACKLIST):
+		contents = PREFIX + contents
+
+	return contents
+
 def assert_dir(dir_path):
 	if not os.path.exists(dir_path):
 		# I love race conditions
 		os.makedirs(dir_path)
 
 class MoonHandler(PatternMatchingEventHandler):
-	patterns = ["*.moon"]
+	patterns = ["*.moon", "*.lua"]
 	ignore_directories = True
 	case_sensitive = True
 
@@ -62,7 +84,7 @@ class MoonHandler(PatternMatchingEventHandler):
 			'instruction': 'create',
 			'filename': get_name(src_path),
 			'directory': self.directory,
-			'contents': PREFIX + compile(src_path)
+			'contents': get_contents(src_path)
 		})
 
 	def modified(self, src_path):
@@ -70,7 +92,7 @@ class MoonHandler(PatternMatchingEventHandler):
 			'instruction': 'modify',
 			'filename': get_name(src_path),
 			'directory': self.directory,
-			'contents': PREFIX + compile(src_path)
+			'contents': get_contents(src_path)
 		})
 
 	def deleted(self, src_path):
@@ -146,7 +168,11 @@ class HTTPServer_RequestHandler(http.server.BaseHTTPRequestHandler):
 		# Send a clean list of files
 		for filename in glob.glob(server_dir + '/**/*.moon', recursive=True):
 			ServerHandler.created(os.path.join(server_dir, filename))
+		for filename in glob.glob(server_dir + '/**/*.lua', recursive=True):
+			ServerHandler.created(os.path.join(server_dir, filename))
 		for filename in glob.glob(replicated_dir + '/**/*.moon', recursive=True):
+			ReplicatedHandler.created(os.path.join(replicated_dir, filename))
+		for filename in glob.glob(replicated_dir + '/**/*.lua', recursive=True):
 			ReplicatedHandler.created(os.path.join(replicated_dir, filename))
 
 		# Send empty response
